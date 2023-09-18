@@ -27,6 +27,7 @@ library
   exposed-modules:
       Lib
       Models
+      ReadExpr
   other-modules:
       Paths_hisp
   hs-source-dirs:
@@ -54,12 +55,20 @@ test-suite hisp-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      TestParsers
+      Utils
       Paths_hisp
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      HUnit >=1.6.2.0
+    , base >=4.7 && <5
     , hisp
     , parsec
+    , smallcheck
+    , tasty >=1.2.2 && <1.6
+    , tasty-hunit
+    , tasty-quickcheck
+    , tasty-smallcheck
   default-language: Haskell2010

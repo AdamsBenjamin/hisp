@@ -18,9 +18,9 @@
 module Main (main) where
 
 import System.Environment
-import Lib
+import Lib (repl)
 
 main :: IO ()
 main = do
     (expr:_) <- getArgs
-    putStrLn (readExpr expr)
+    putStrLn (repl expr)
