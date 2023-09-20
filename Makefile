@@ -14,21 +14,21 @@ STACK := stack
 PROJ_NAME := hisp
 
 build:
-> $(STACK) build
+> @$(STACK) build
 .PHONY: build
 
 exec:
-> $(STACK) exec $(PROJ_NAME)_exe
+> @$(STACK) exec $(PROJ_NAME)_exe
 .PHONY: exec
 
 test:
-> $(STACK) test
+> @$(STACK) test
 .PHONY: test
 
 clean:
-> $(STACK) clean
+> @$(STACK) clean
 .PHONY: clean
 
 purge:
-> $(STACK) purge
+> @$(STACK) purge
 .PHONY: purge

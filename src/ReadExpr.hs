@@ -18,9 +18,12 @@
 module ReadExpr where
 
 import Data.Char (digitToInt)
-import Text.ParserCombinators.Parsec
-import Models
 import Numeric (readOct, readHex, readFloat)
+import Text.ParserCombinators.Parsec
+
+import Models
+import ReadExpr.Num
+import ReadExpr.Utils
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "lisp" input of
@@ -33,16 +36,8 @@ parseExpr = try parseNumber
           <|> try parseAtom
           <|> parseString
           <|> try parseQuoted
-          <|> try parseFloat
           <|> try parseList
           <|> try parseDottedList
-
-parseFloat :: Parser LispVal
-parseFloat = do
-    num <- many . oneOf $ ['0'..'9'] ++ "."
-    _ <- oneOf "SFDL" -- TODO: implement different real number types
-    skip "0"
-    return . Float . fst . head $ readFloat num
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
@@ -74,6 +69,58 @@ parseAtom = do
         "#t" -> Bool True
         "#f" -> Bool False
         _    -> Atom atom
+
+parseNum ::Parser LispVal
+parseNum = do
+    prefix <- parsePrefix
+    complex <- parseComplex
+    return $ Atom "undef"
+        
+
+parsePrefix :: Parser String
+parsePrefix = try (parseRadix <++> parseExactness)
+            <|> parseExactness <++> parseRadix
+
+parseRadix :: Parser String
+parseRadix = string "#b"
+           <|> string "#o"
+           <|> string "#d"
+           <|> string "#x"
+           <|> return ""
+
+parseExactness :: Parser String
+parseExactness = string "#i"
+               <|> string "#e"
+               <|> return ""
+
+parseComplex :: Parser LispVal
+parseComplex = parseReal
+             
+parseReal :: Parser LispVal
+parseReal = do
+    sign <- parseSign
+    ureal <- parseUReal
+
+parseSign :: Parser String
+parseSign = oneOf "-+"
+          <|> return ""
+
+parseUReal :: Parser LispVal
+parseUReal = try parseURational
+           <|> try parseUInteger
+           <|> parseUDecimal
+
+parseURational :: Parser LispVal
+parseURational = do
+    numer <- parseUInteger
+    spaces >> skip "/" >> spaces
+    denom <- parseUInteger
+    return $ Rational (numer, denom)
+
+parseUInteger :: Parser LispVal
+parseUInteger :: do
+    ds <- many1 digits
+    
 
 parseNumber :: Parser LispVal
 parseNumber = do
@@ -122,31 +169,3 @@ parseChar = do
     skip "#\\"
     name <- many1 (noneOf " ")
     return . Character $ name
-
-exact :: String -> Parser String
-exact = mapM (oneOf . return)
-
-skip :: String -> Parser ()
-skip = mapM_ (oneOf . return)
-
-manyOf :: String -> Parser String
-manyOf = many . oneOf
-
-manyOf1 :: String -> Parser String
-manyOf1 = many1 . oneOf
-
-symbol :: Parser Char
-symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
-
-escapeChars :: Parser Char
-escapeChars = do
-    _ <- oneOf "\\"
-    e <- oneOf "nrt\\\""
-    return $ case e of
-        'n'  -> '\n'
-        'r'  -> '\r'
-        't'  -> '\t'
-        '\\' -> '\\'
-        '\'' -> '\''
-        '\"' -> '\"'
-        _    -> undefined
