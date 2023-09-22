@@ -15,8 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 module ReadExpr.Num where
 
 import Text.ParserCombinators.Parsec
@@ -33,7 +31,7 @@ parseNum ::Parser LispNumber
 parseNum = do
     (radix, _) <- parsePrefix
     parseComplex radix
-        
+
 -- | Implementation of the rules defined under `prefix`.
 -- Parses prefixed information about the number.
 parsePrefix :: Parser (Radix, Exactness)
@@ -48,23 +46,20 @@ parseComplex :: Radix -> Parser LispNumber
 parseComplex radix = do
     real <- try (parseReal radix)
     optional spaces
-    f    <- parseTrailingComplex radix
-    return $ f real
+    ($ real) <$> parseTrailingComplex radix
 
 parseTrailingComplex :: Radix -> Parser (LispNumber -> LispNumber)
 parseTrailingComplex radix = do
     op <- tryMaybe (oneOf "-+*i")
     optional spaces
     case op of
-        (Just '+') -> (+) <$> parseComplex radix
-        (Just '-') -> (-) <$> parseComplex radix
-        (Just '*') -> (*) <$> parseComplex radix
-        (Just 'i') -> do
-            f <- parseTrailingComplex radix
-            return $ \x -> f $ x * Complex (0, 1)
+        (Just '+') -> flip (+) <$> parseComplex radix
+        (Just '-') -> flip (-) <$> parseComplex radix
+        (Just '*') -> flip (*) <$> parseComplex radix
+        (Just 'i') -> return (* Complex (0,1))
         Nothing    -> return id
         _          -> error "Unsure how to handle given operator"
-            
+
 -- | Implementation of the rules defined under `real R`.
 -- Used to parse the digits of any number.
 parseReal :: Radix -> Parser LispNumber
@@ -104,17 +99,6 @@ parseUInteger radix = do
     ds <- parseFromRadix radix
     return $ Integer ds
 
-parseNumber :: Parser LispVal
-parseNumber = do
-    skip "#"
-    spec <- oneOf "xdbo"
-    case spec of
-      -- 'd' -> parseDecimal
-      'x' -> parseHex
-      'o' -> parseOctal
-      'b' -> parseBinary
-      _   -> error "unknown number format specifier"
-
 parseHex :: Parser LispVal
 parseHex = do
     ds <- manyOf1 $ ['0'..'9'] ++ ['A'..'F'] ++ ['a'..'f']
@@ -141,7 +125,7 @@ parseSign = do
     sign <- oneOf "-+"
     return $ case sign of
                '-' -> Minus
-               _   -> Plus 
+               _   -> Plus
 
 -- | Implementation of the rules defined under `exactness`.
 data Exactness = E | I
@@ -175,18 +159,10 @@ parseRadix = do
             _   -> error "Invalid radix"
 
 parseFromRadix :: (Eq a, Num a) => Radix -> Parser a
-parseFromRadix B = do
-    ds <- manyOf1 "01"
-    return $ readBinary  ds
-parseFromRadix O = do
-    ds <- manyOf1 ['0'..'7']
-    return . fst . head . readOct $ ds
-parseFromRadix D = do
-    ds <- manyOf1 ['0'..'9']
-    return .fromInteger $ read ds
-parseFromRadix X = do
-    ds <- manyOf1 $ ['0'..'9'] ++ ['a'..'f'] ++ ['A'..'F']
-    return . fst . head . readHex $ ds
+parseFromRadix B = readBinary <$> manyOf1 "01"
+parseFromRadix O = fst . head . readOct <$> manyOf1 ['0'..'7']
+parseFromRadix D = fromInteger . read <$> manyOf1 ['0'..'9']
+parseFromRadix X = fst . head . readHex <$> manyOf1 (['0'..'9'] ++ ['a'..'f'] ++ ['A'..'F'])
 
 readBinary :: Num a => String -> a
 readBinary x = go x 0

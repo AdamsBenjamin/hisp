@@ -15,12 +15,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use optional" #-}
 
 module ReadExpr.Utils where
 
 import Text.ParserCombinators.Parsec
-import Data.Maybe (fromMaybe)
 
 exact :: String -> Parser String
 exact = mapM (oneOf . return)
