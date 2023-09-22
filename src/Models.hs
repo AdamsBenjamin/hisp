@@ -31,10 +31,8 @@ instance Show LispVal where
     show (String contents) = "\"" ++ contents ++ "\""
     show (Bool b)          = if b then "#t" else "#f"
     show (Number num)      = show num
-    show (List  vals)
-        = "(" ++ unwords (show <$> vals) ++ ")"
-    show (DottedList h t)
-        = "(" ++ unwords (show <$> h)  ++ "." ++ show t ++ ")"
+    show (List  vals)      = "(" ++ unwords (show <$> vals) ++ ")"
+    show (DottedList h t)  = "(" ++ unwords (show <$> h)  ++ "." ++ show t ++ ")"
     show (Character s)     = "#\\" ++ s
 
 data LispNumber = Complex (Double, Double)
@@ -44,90 +42,89 @@ data LispNumber = Complex (Double, Double)
                 deriving (Eq)
 
 instance Show LispNumber where
-  show (Complex (real, img))
-    | img < 0   = show real ++ "-" ++ show (negate img) ++ "i"
-    | img == 0  = show real
-    | otherwise = show real ++ "+" ++ show img ++ "i"
-  show (Real d)                  = show d
-  show (Rational (numer, denom)) = show numer ++ "/" ++ show denom
-  show (Integer int)             = show int
+    show (Complex (real, img))
+        | img < 0   = show real ++ "-" ++ show (negate img) ++ "i"
+        | img == 0  = show real
+        | otherwise = show real ++ "+" ++ show img ++ "i"
+    show (Real d)                  = show d
+    show (Rational (numer, denom)) = show numer ++ "/" ++ show denom
+    show (Integer int)             = show int
 
 instance Num LispNumber where
-  -- (+)
-  (+) (Complex (a, i)) (Complex (b, j))
-      = Complex (a + b, i + j)
-  (+) (Complex (a, i)) (Real b)          = Complex (a + b, i)
-  (+) (Complex (a, i)) (Rational (b, y))
-      = Complex (a + fromIntegral b / fromIntegral y, i)
-  (+) (Complex (a, i)) (Integer b) = Complex (a + fromIntegral b, i)
+    -- (+)
+    Complex (a, i) + Complex (b, j)  = Complex (a + b, i + j)
+    Complex (a, i) + Real b          = Complex (a + b, i)
+    Complex (a, i) + Rational (b, y) = Complex (a + (fromIntegral b / fromIntegral y), i)
+    Complex (a, i) + Integer b       = Complex (a + fromIntegral b, i)
 
-  (+) (Real a) (Real b)          = Real (a + b)
-  (+) (Real a) (Rational (b, x))
-      = Real $ a + (fromIntegral b / fromIntegral x)
-  (+) (Real a) (Integer b)       = Real $ a + fromIntegral b
-  
-  (+) (Rational (a, x)) (Rational (b, y))
-      = let denom = lcm x y
-        in Rational ((a * (denom `div` x)) + (b * (denom `div` y)), denom)
-  (+) (Rational (a, x)) (Integer b)    = Rational (a + (b * x), x)
+    Real a + Real b          = Real (a + b)
+    Real a + Rational (b, x) = Real $ a + (fromIntegral b / fromIntegral x)
+    Real a + Integer b       = Real $ a + fromIntegral b
 
-  (+) (Integer a) (Integer b) = Integer $ a + b
-  (+) x y = y + x
+    Rational (a, x) + Rational (b, y) = Rational ((a * (denom `div` x)) + (b * (denom `div` y)), denom)
+      where denom = lcm x y
+    Rational (a, x) + Integer b       = Rational (a + (b * x), x)
 
-  -- (-)
-  (-) (Complex (a, i)) (Complex (b, j))
-      = Complex (a - b, i - j)
-  (-) (Complex (a, i)) (Real b) = Complex (a - b, i)
-  (-) (Complex (a, i)) (Rational (b, y))
-      = Complex (a - fromIntegral b / fromIntegral y, i)
-  (-) (Complex (a, i)) (Integer b) = Complex (a - fromIntegral b, i)
+    Integer a + Integer b = Integer $ a + b
 
-  (-) (Real a) (Real b)          = Real $ a - b
-  (-) (Real a) (Rational (b, y)) = Real $ a - (fromIntegral b / fromIntegral y)
-  (-) (Real a) (Integer b)       = Real $ a - fromIntegral b
+    x + y = y + x
 
-  (-) (Rational (a, x)) (Rational (b, y))
-      = let denom = lcm x y
-        in Rational ((a * y `div` denom) + (b * x `div` denom), denom)
-  (-) (Rational (a, x)) (Integer b)
-      = Rational (a + (b * x), x)
+    -- (-)
+    Complex (a, i) - Complex (b, j)  = Complex (a - b, i - j)
+    Complex (a, i) - Real b          = Complex (a - b, i)
+    Complex (a, i) - Rational (b, y) =  Complex (a - fromIntegral b / fromIntegral y, i)
+    Complex (a, i) - Integer b       = Complex (a - fromIntegral b, i)
 
-  (-) (Integer a) (Integer b) = Integer $ a - b
-  (-) x y = negate $ y - x
+    Real a - Real b          = Real $ a - b
+    Real a - Rational (b, y) = Real $ a - (fromIntegral b / fromIntegral y)
+    Real a - Integer b      = Real $ a - fromIntegral b
 
-  -- (*)
-  (*) (Complex (a, i)) (Complex (b, j))
-      = Complex (i * j + a * b, a * j + b * i)
-  (*) (Complex (a, i)) (Real b) = Complex (a * b, i * b)
-  (*) (Complex (a, i)) (Rational (b, y))
-      = let n = fromIntegral b / fromIntegral y
-        in Complex (a * n, i * n)
-  (*) (Complex (a, i)) (Integer b)
-      = Complex (a * fromIntegral b, i * fromIntegral b)
+    Rational (a, x) - Rational (b, y) = Rational ((a * y `div` denom) + (b * x `div` denom), denom)
+      where denom = lcm x y
+    Rational (a, x) - Integer b       = Rational (a + (b * x), x)
 
-  (*) (Real a) (Real b)          = Real $ a * b
-  (*) (Real a) (Rational (b, y))
-      = Real $ (a * fromIntegral b) / fromIntegral y
+    Integer a - Integer b = Integer $ a - b
 
-  (*) (Rational (a, x)) (Rational (b, y))
-      = Rational (a * b, x * y)
-  (*) (Rational (a, x)) (Integer b) = Rational (a * b, x)
+    {- x + y^-1       = n
+    - x^-1 + x + y^-1 = x^-1 + n
+    - y^-1            = x^-1 + n
+    - y^-1 + n^-1     = x^-1 + n + n^-1
+    - y^-1 + n^-1     = x^-1
+    - y + y^-1 + n^-1 = y + x^-1
+    - n^-1            = y + x^-1
+    - n               = (y + x^-1)^-1
+    - x + y^-1        = (y + x^-1)^-1
+    -}
+    x - y = negate $ y - x
 
-  (*) (Integer a) (Integer b) = Integer $ a * b
+    -- (*)
+    Complex (a, i) * Complex (b, j)  = Complex (a * b + i * j, a * j + b * i)
+    Complex (a, i) * Real b          = Complex (a * b, i * b)
+    Complex (a, i) * Rational (b, y) = Complex (a * n, i * n)
+      where n = fromIntegral b / fromIntegral y
+    Complex (a, i) * Integer b       = Complex (a * fromIntegral b, i * fromIntegral b)
 
-  (*) x y = y * x
+    Real a * Real b          = Real $ a * b
+    Real a * Rational (b, y) = Real $ a * fromIntegral b / fromIntegral y
+    Real a * Integer b       = Real $ a * fromIntegral b
 
-  -- (abs)
-  abs (Complex (a, i))  = Real . sqrt $ (a * a) + (i * i)
-  abs (Real a)          = Real $ abs a
-  abs (Rational (a, x)) = Rational (abs a, abs x)
-  abs (Integer x)       = Integer (abs x)
+    Rational (a, x) * Rational (b, y) = Rational (a * b, x * y)
+    Rational (a, x) * Integer b = Rational (a * b, x)
 
-  -- (signum)
-  signum (Complex (a, _))  = signum $ Real a
-  signum (Real a)          = Integer $ floor $ signum a
-  signum (Rational (a, x)) = Integer $ signum a * signum x
-  signum (Integer a)       = Integer $ signum a
+    Integer a * Integer b = Integer $ a * b
 
-  -- (fromInteger)
-  fromInteger = Integer
+    x * y = y * x
+
+    -- (abs)
+    abs (Complex (a, i))  = Real . sqrt $ (a * a) + (i * i)
+    abs (Rational (a, x)) = Rational (abs a, abs x)
+    abs x                 = signum x * x
+
+    -- (signum)
+    signum (Complex (a, _))  = signum $ Real a
+    signum (Real a)          = Integer $ floor $ signum a
+    signum (Rational (a, x)) = Integer $ signum a * signum x
+    signum (Integer a)       = Integer $ signum a
+
+    -- (fromInteger)
+    fromInteger = Integer
