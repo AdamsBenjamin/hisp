@@ -25,33 +25,20 @@ import Test.Tasty.HUnit
 import Test.Tasty.SmallCheck as SC
 
 import ReadExpr
+import ReadExpr.Num
 import Models
 import Text.ParserCombinators.Parsec
 
 parserTests :: TestTree
 parserTests = testGroup "parser tests"
-    [ parseFloatTests
-    , parseDottedListTests
+    [ parseDottedListTests
     , parseQuotedTests
     , parseListTests
     , parseAtomTests
-    , parseNumberTests
     , parseStringTests
     , parseCharTests
+    , parseNumTests
     ]
-
-parseFloatTests :: TestTree
-parseFloatTests = testGroup "parse float tests"
-    [ testCase "Parse 'F' floats" $
-        "3.14159F0" `shouldEqual` Float 3.14159
-    , testCase "Parse 'S' floats" $
-        "1.61803S0" `shouldEqual` Float 1.61803
-    , testCase "Parse 'D' floats" $
-        "2.71828D0" `shouldEqual` Float 2.71828
-    , testCase "Parse 'L' floats" $
-        "1.41421L0" `shouldEqual` Float 1.41421
-    ]
-  where shouldEqual = parserAssertion parseFloat
 
 parseDottedListTests :: TestTree
 parseDottedListTests = testGroup "parse dotted list tests"
@@ -89,19 +76,6 @@ parseAtomTests = testGroup "parse atom tests"
     ]
   where shouldEqual = parserAssertion parseAtom
 
-parseNumberTests :: TestTree
-parseNumberTests = testGroup "parse numbers tests"
-    [ testCase "Parse decimal number" $
-        "#d10" `shouldEqual` Number 10
-    , testCase "Parse binary number" $
-        "#b10" `shouldEqual` Number 2
-    , testCase "Parse hex number" $
-        "#x10" `shouldEqual` Number 16
-    , testCase "Parse octal number" $
-        "#o10" `shouldEqual` Number 8
-    ] 
-  where shouldEqual = parserAssertion parseNumber
-
 parseStringTests :: TestTree
 parseStringTests = testGroup "parse string tests"
     [ SC.testProperty "Parse string" $
@@ -119,5 +93,18 @@ parseCharTests = testGroup "parse char tests"
               in res == Right (Character s)
     ]
 
-parserAssertion:: Parser LispVal -> String -> LispVal -> Assertion
+parseNumTests :: TestTree
+parseNumTests = testGroup "parse numbers tests"
+    [  testCase "Parse integer" $
+        "1" `shouldEqual` Integer 1
+    , testCase "Parse rational" $
+        "3/4" `shouldEqual` Rational (3, 4)
+    , testCase "Parse real" $
+        "3.14" `shouldEqual` Real 3.14
+    , testCase "Parse complex" $
+        "1 - 1i" `shouldEqual` Complex (1, -1)
+    ] 
+  where shouldEqual = parserAssertion parseNum
+
+parserAssertion:: (Eq a, Show a)=> Parser a -> String -> a -> Assertion
 parserAssertion parser toParse parsed = parse parser "test" toParse @?= Right parsed

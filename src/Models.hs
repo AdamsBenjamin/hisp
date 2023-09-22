@@ -18,20 +18,39 @@
 module Models where
 
 data LispVal = Atom String
-             | List [LispVal]
-             | DottedList [LispVal] LispVal
-             | Number Integer
              | String String
              | Bool Bool
+             | Number LispNumber
+             | List [LispVal]
+             | DottedList [LispVal] LispVal
              | Character String
-             | Float Float
-             deriving (Show, Eq)
+             deriving (Eq)
+
+instance Show LispVal where
+    show (Atom s)          = s
+    show (String contents) = "\"" ++ contents ++ "\""
+    show (Bool b)          = if b then "#t" else "#f"
+    show (Number num)      = show num
+    show (List  vals)
+        = "(" ++ unwords (show <$> vals) ++ ")"
+    show (DottedList h t)
+        = "(" ++ unwords (show <$> h)  ++ "." ++ show t ++ ")"
+    show (Character s)     = "#\\" ++ s
 
 data LispNumber = Complex (Double, Double)
                 | Real Double
                 | Rational (Integer, Integer)
                 | Integer Integer
-                deriving (Show, Eq)
+                deriving (Eq)
+
+instance Show LispNumber where
+  show (Complex (real, img))
+    | img < 0   = show real ++ "-" ++ show (negate img) ++ "i"
+    | img == 0  = show real
+    | otherwise = show real ++ "+" ++ show img ++ "i"
+  show (Real d)                  = show d
+  show (Rational (numer, denom)) = show numer ++ "/" ++ show denom
+  show (Integer int)             = show int
 
 instance Num LispNumber where
   -- (+)
@@ -74,7 +93,7 @@ instance Num LispNumber where
       = Rational (a + (b * x), x)
 
   (-) (Integer a) (Integer b) = Integer $ a - b
-  (-) x y = -(y - x)
+  (-) x y = negate $ y - x
 
   -- (*)
   (*) (Complex (a, i)) (Complex (b, j))

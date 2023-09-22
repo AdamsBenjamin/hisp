@@ -17,8 +17,6 @@
 
 module ReadExpr where
 
-import Data.Char (digitToInt)
-import Numeric (readOct, readHex, readFloat)
 import Text.ParserCombinators.Parsec
 
 import Models
@@ -31,7 +29,7 @@ readExpr input = case parse parseExpr "lisp" input of
     Right val -> "Found value: " ++ show val
 
 parseExpr :: Parser LispVal
-parseExpr = try parseNumber
+parseExpr = Number <$> try parseNum
           <|> try parseChar
           <|> try parseAtom
           <|> parseString
@@ -69,93 +67,6 @@ parseAtom = do
         "#t" -> Bool True
         "#f" -> Bool False
         _    -> Atom atom
-
-parseNum ::Parser LispVal
-parseNum = do
-    prefix <- parsePrefix
-    complex <- parseComplex
-    return $ Atom "undef"
-        
-
-parsePrefix :: Parser String
-parsePrefix = try (parseRadix <++> parseExactness)
-            <|> parseExactness <++> parseRadix
-
-parseRadix :: Parser String
-parseRadix = string "#b"
-           <|> string "#o"
-           <|> string "#d"
-           <|> string "#x"
-           <|> return ""
-
-parseExactness :: Parser String
-parseExactness = string "#i"
-               <|> string "#e"
-               <|> return ""
-
-parseComplex :: Parser LispVal
-parseComplex = parseReal
-             
-parseReal :: Parser LispVal
-parseReal = do
-    sign <- parseSign
-    ureal <- parseUReal
-
-parseSign :: Parser String
-parseSign = oneOf "-+"
-          <|> return ""
-
-parseUReal :: Parser LispVal
-parseUReal = try parseURational
-           <|> try parseUInteger
-           <|> parseUDecimal
-
-parseURational :: Parser LispVal
-parseURational = do
-    numer <- parseUInteger
-    spaces >> skip "/" >> spaces
-    denom <- parseUInteger
-    return $ Rational (numer, denom)
-
-parseUInteger :: Parser LispVal
-parseUInteger :: do
-    ds <- many1 digits
-    
-
-parseNumber :: Parser LispVal
-parseNumber = do
-    skip "#"
-    spec <- oneOf "xdbo"
-    case spec of
-      'd' -> parseDecimal
-      'x' -> parseHex
-      'o' -> parseOctal
-      'b' -> parseBinary
-      _   -> error "unknown number format specifier"
-
-parseHex :: Parser LispVal
-parseHex = do
-    ds <- manyOf1 $ ['0'..'9'] ++ ['A'..'F'] ++ ['a'..'f']
-    return . Number . fst . head $ readHex ds
-
-parseDecimal :: Parser LispVal
-parseDecimal = do
-    ds <- many1 digit
-    return . Number $ read ds
-
-parseOctal :: Parser LispVal
-parseOctal = do
-    ds <- manyOf1 ['0'..'7']
-    return . Number . fst . head $ readOct ds
-
-parseBinary :: Parser LispVal
-parseBinary = do
-    ds <- manyOf1 "01"
-    return
-        . Number
-        . fromIntegral
-        . foldl (\acc x -> acc * 2 + digitToInt x) 0
-        $ ds
 
 parseString :: Parser LispVal
 parseString = do

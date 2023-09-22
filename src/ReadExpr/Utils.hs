@@ -14,10 +14,13 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use optional" #-}
 
 module ReadExpr.Utils where
 
 import Text.ParserCombinators.Parsec
+import Data.Maybe (fromMaybe)
 
 exact :: String -> Parser String
 exact = mapM (oneOf . return)
@@ -48,14 +51,20 @@ escapeChars = do
         _    -> undefined
 
 -- | Applies the given parsers in order.
-(<++>) :: Parser [a] -> Parser [a] -> Parser [a]
+(<++>) :: Parser a -> Parser b -> Parser (a, b)
 a <++> b = do
     x <- a
     y <- b
-    return $ x ++ y
+    return (x, y)
 
--- | Tries to apply the given parsers in order.
--- Falls back to just the second parser if the first
--- cannot be satisfied.
-(<+?>) :: Parser [a] -> Parser [a] -> Parser [a]
-a <+?> b = try (a <++> b) <|> b
+-- | Unordered, optional parseables.
+unordered :: Parser a -> Parser b -> Parser (Maybe a, Maybe b)
+unordered a b = do
+    (ma, mb) <- tryMaybe a <++> tryMaybe b
+    ma2 <- case ma of
+               Nothing -> tryMaybe a
+               _       -> return ma
+    return (ma2, mb)
+
+tryMaybe :: Parser a -> Parser (Maybe a)
+tryMaybe p = try (Just <$> p) <|> return Nothing
